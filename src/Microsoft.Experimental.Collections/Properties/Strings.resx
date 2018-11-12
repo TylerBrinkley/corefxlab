@@ -237,4 +237,7 @@
   <data name="ReadOnly_Modification" xml:space="preserve">
     <value>The collection is read-only</value>
   </data>
+  <data name="InvalidOperation_ConcurrentOperationsNotSupported" xml:space="preserve">
+    <value>Operations that change non-concurrent collections must have exclusive access. A concurrent update was performed on this collection and corrupted its state. The collection's state is no longer correct.</value>
+  </data>
 </root>
