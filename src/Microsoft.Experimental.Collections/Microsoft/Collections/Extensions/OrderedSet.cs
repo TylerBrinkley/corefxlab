@@ -1,5 +1,6 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections;
@@ -8,6 +9,13 @@ using System.Diagnostics;
 
 namespace Microsoft.Collections.Extensions
 {
+    // used for set checking operations (using enumerables) that rely on counting
+    internal struct ElementCount
+    {
+        public int UniqueCount;
+        public int UnfoundCount;
+    }
+
     /// <summary>
     /// Represents an ordered set of values with the same performance as <see cref="HashSet{T}"/> with O(1) lookups and adds but with O(n) inserts and removes.
     /// </summary>
@@ -129,12 +137,12 @@ namespace Microsoft.Collections.Extensions
 
         public void Clear()
         {
-            int count = _count;
-            if (count > 0)
+            if (_count > 0)
             {
                 Array.Clear(_buckets, 0, _buckets.Length);
-                Array.Clear(_slots, 0, count);
+                Array.Clear(_slots, 0, _count);
                 _count = 0;
+                ++_version;
             }
         }
 
@@ -163,7 +171,7 @@ namespace Microsoft.Collections.Extensions
             {
                 throw new ArgumentNullException(nameof(other));
             }
-
+            
             // this is already the empty set; return
             if (_count == 0)
             {
@@ -177,11 +185,7 @@ namespace Microsoft.Collections.Extensions
                 return;
             }
 
-            // remove every element in other from this
-            foreach (T element in other)
-            {
-                Remove(element);
-            }
+            ExceptWithEnumerable(other);
         }
 
         public Enumerator GetEnumerator() => new Enumerator(this);
@@ -211,22 +215,10 @@ namespace Microsoft.Collections.Extensions
 
             // if other is empty, intersection is empty set; remove all elements and we're done
             // can only figure this out if implements ICollection<T>. (IEnumerable<T> has no count)
-            if (other is ICollection<T> otherAsCollection)
+            if (other is ICollection<T> otherAsCollection && otherAsCollection.Count == 0)
             {
-                if (otherAsCollection.Count == 0)
-                {
-                    Clear();
-                    return;
-                }
-
-                // faster if other is a hashset using same equality comparer; so check 
-                // that other is a hashset using the same equality comparer.
-                if ((other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet)) ||
-                    (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet)))
-                {
-                    IntersectWithHashSetWithSameEC(otherAsCollection);
-                    return;
-                }
+                Clear();
+                return;
             }
 
             IntersectWithEnumerable(other);
@@ -273,7 +265,7 @@ namespace Microsoft.Collections.Extensions
             }
             // couldn't fall out in the above cases; do it the long way
             ElementCount result = CheckUniqueAndUnfoundElements(other, true);
-            return result.uniqueCount < _count && result.unfoundCount == 0;
+            return result.UniqueCount < _count && result.UnfoundCount == 0;
         }
 
         public bool IsProperSupersetOf(IEnumerable<T> other)
@@ -317,7 +309,7 @@ namespace Microsoft.Collections.Extensions
             }
 
             ElementCount result = CheckUniqueAndUnfoundElements(other, false);
-            return result.uniqueCount == _count && result.unfoundCount > 0;
+            return result.UniqueCount == _count && result.UnfoundCount > 0;
         }
 
         public bool IsSubsetOf(IEnumerable<T> other)
@@ -342,8 +334,8 @@ namespace Microsoft.Collections.Extensions
             // faster if other has unique elements according to this equality comparer; so check 
             // that other is a hashset using the same equality comparer.
             if (other is ICollection<T> otherAsCollection &&
-                (other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet) ||
-                    (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet))))
+                ((other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet)) ||
+                (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet))))
             {
                 // if this has more elements then it can't be a subset
                 if (_count > otherAsCollection.Count)
@@ -356,7 +348,7 @@ namespace Microsoft.Collections.Extensions
                 return IsSubsetOfHashSetWithSameEC(otherAsCollection);
             }
             ElementCount result = CheckUniqueAndUnfoundElements(other, false);
-            return result.uniqueCount == _count && result.unfoundCount >= 0;
+            return result.UniqueCount == _count && result.UnfoundCount >= 0;
         }
 
         public bool IsSupersetOf(IEnumerable<T> other)
@@ -383,7 +375,7 @@ namespace Microsoft.Collections.Extensions
                 // try to compare based on counts alone if other is a hashset with
                 // same equality comparer
                 if ((other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet)) ||
-                    (other is OrderedSet<T> otherAsOrderedSet && Comparer.Equals(otherAsOrderedSet.Comparer)))
+                    (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet)))
                 {
                     if (otherAsCollection.Count > _count)
                     {
@@ -596,7 +588,7 @@ namespace Microsoft.Collections.Extensions
                 }
             }
             ElementCount result = CheckUniqueAndUnfoundElements(other, true);
-            return result.uniqueCount == _count && result.unfoundCount == 0;
+            return result.UniqueCount == _count && result.UnfoundCount == 0;
         }
 
         public void SymmetricExceptWith(IEnumerable<T> other)
@@ -620,20 +612,7 @@ namespace Microsoft.Collections.Extensions
                 return;
             }
 
-            // If other is a HashSet, it has unique elements according to its equality comparer,
-            // but if they're using different equality comparers, then assumption of uniqueness
-            // will fail. So first check if other is a hashset using the same equality comparer;
-            // symmetric except is a lot faster and avoids bit array allocations if we can assume
-            // uniqueness
-            if ((other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet)) ||
-                (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet)))
-            {
-                SymmetricExceptWithUniqueHashSet(other);
-            }
-            else
-            {
-                SymmetricExceptWithEnumerable(other);
-            }
+            SymmetricExceptWithEnumerable(other);
         }
 
         public void TrimExcess() => TrimExcess(_count);
@@ -734,19 +713,17 @@ namespace Microsoft.Collections.Extensions
 
         private int IndexOf(T item, out int hashCode)
         {
-            if (item == null)
-            {
-                throw new ArgumentNullException(nameof(item));
-            }
-
             IEqualityComparer<T> comparer = _comparer;
-            hashCode = (comparer?.GetHashCode(item) ?? item.GetHashCode()) & 0x7FFFFFFF;
+            hashCode = item != null ? (comparer?.GetHashCode(item) ?? item.GetHashCode()) & 0x7FFFFFFF : 0;
             int[] buckets = _buckets;
             int index = -1;
             if (buckets.Length > 0)
             {
                 index = buckets[hashCode % buckets.Length] - 1;
-                comparer = comparer ?? EqualityComparer<T>.Default;
+                if (comparer == null)
+                {
+                    comparer = EqualityComparer<T>.Default;
+                }
                 Slot[] slots = _slots;
                 int collisionCount = 0;
                 while (index >= 0)
@@ -887,27 +864,6 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
-        /// <summary>
-        /// if other is a set, we can assume it doesn't have duplicate elements, so use this
-        /// technique: if can't remove, then it wasn't present in this set, so add.
-        /// 
-        /// As with other methods, callers take care of ensuring that other is a hashset using the
-        /// same equality comparer.
-        /// </summary>
-        /// <param name="other"></param>
-        private void SymmetricExceptWithUniqueHashSet(IEnumerable<T> other)
-        {
-            Debug.Assert((other is HashSet<T> otherAsSet && Comparer.Equals(otherAsSet.Comparer)) ||
-                (other is OrderedSet<T> otherAsOrderedSet && Comparer.Equals(otherAsOrderedSet.Comparer)));
-            foreach (T item in other)
-            {
-                if (!Remove(item))
-                {
-                    Add(item);
-                }
-            }
-        }
-
         private void SymmetricExceptWithEnumerable(IEnumerable<T> other)
         {
             // Utilizes the unused 32nd bit of the hashCode to avoid allocating a BitArray
@@ -943,8 +899,7 @@ namespace Microsoft.Collections.Extensions
                 // checks if 32nd bit is unset
                 if ((slot.HashCode & unchecked((int)0x80000000)) == 0)
                 {
-                    slots[nextIndex] = slot;
-                    ++nextIndex;
+                    slots[nextIndex++] = slot;
                 }
             }
 
@@ -953,26 +908,12 @@ namespace Microsoft.Collections.Extensions
             {
                 slots[i] = default;
             }
-        }
 
-        /// <summary>
-        /// If other is a hashset that uses same equality comparer, intersect is much faster 
-        /// because we can use other's Contains
-        /// </summary>
-        /// <param name="other"></param>
-        private void IntersectWithHashSetWithSameEC(ICollection<T> other)
-        {
-            Debug.Assert((other is HashSet<T> otherAsSet && Comparer.Equals(otherAsSet.Comparer)) ||
-                (other is OrderedSet<T> otherAsOrderedSet && Comparer.Equals(otherAsOrderedSet.Comparer)));
-            int count = _count;
-            for (int i = 0; i < count; i++)
-            {
-                T item = _slots[i].Value;
-                if (!other.Contains(item))
-                {
-                    Remove(item);
-                }
-            }
+            _count = nextIndex;
+            int[] buckets = _buckets;
+            Array.Clear(buckets, 0, buckets.Length);
+            ReinitializeBuckets(buckets, slots);
+            ++_version;
         }
 
         private void IntersectWithEnumerable(IEnumerable<T> other)
@@ -1008,8 +949,7 @@ namespace Microsoft.Collections.Extensions
                 {
                     // unsets the 32nd bit
                     slot.HashCode &= 0x7FFFFFFF;
-                    slots[nextIndex] = slot;
-                    ++nextIndex;
+                    slots[nextIndex++] = slot;
                 }
             }
 
@@ -1023,6 +963,54 @@ namespace Microsoft.Collections.Extensions
             int[] buckets = _buckets;
             Array.Clear(buckets, 0, buckets.Length);
             ReinitializeBuckets(buckets, slots);
+            ++_version;
+        }
+
+        private void ExceptWithEnumerable(IEnumerable<T> other)
+        {
+            // Utilizes the unused 32nd bit of the hashCode to avoid allocating a BitArray
+
+            int count = _count;
+            bool anyToRemove = false;
+            Slot[] slots = _slots;
+            foreach (T item in other)
+            {
+                int index = IndexOf(item);
+                if (index >= 0)
+                {
+                    // sets the 32nd bit to indicate that the item was found
+                    slots[index].HashCode |= unchecked((int)0x80000000);
+                    anyToRemove = true;
+                }
+            }
+
+            if (!anyToRemove)
+            {
+                return;
+            }
+
+            int nextIndex = 0;
+            for (int i = 0; i < count; ++i)
+            {
+                Slot slot = slots[i];
+                // checks if 32nd bit is unset
+                if ((slot.HashCode & unchecked((int)0x80000000)) == 0)
+                {
+                    slots[nextIndex++] = slot;
+                }
+            }
+
+            // Clears removed slots
+            for (int i = nextIndex; i < count; ++i)
+            {
+                slots[i] = default;
+            }
+
+            _count = nextIndex;
+            int[] buckets = _buckets;
+            Array.Clear(buckets, 0, buckets.Length);
+            ReinitializeBuckets(buckets, slots);
+            ++_version;
         }
 
         /// <summary>
@@ -1078,8 +1066,8 @@ namespace Microsoft.Collections.Extensions
         /// <returns></returns>
         private bool IsSubsetOfHashSetWithSameEC(ICollection<T> other)
         {
-            Debug.Assert((other is HashSet<T> otherAsSet && Comparer.Equals(otherAsSet.Comparer)) ||
-                (other is OrderedSet<T> otherAsOrderedSet && Comparer.Equals(otherAsOrderedSet.Comparer)));
+            Debug.Assert((other is HashSet<T> otherAsSet && AreEqualityComparersEqual(this, otherAsSet)) ||
+                (other is OrderedSet<T> otherAsOrderedSet && AreEqualityComparersEqual(this, otherAsOrderedSet)));
             foreach (T item in this)
             {
                 if (!other.Contains(item))
@@ -1128,8 +1116,8 @@ namespace Microsoft.Collections.Extensions
                     // break right away, all we want to know is whether other has 0 or 1 elements
                     break;
                 }
-                result.uniqueCount = 0;
-                result.unfoundCount = numElementsInOther;
+                result.UniqueCount = 0;
+                result.UnfoundCount = numElementsInOther;
                 return result;
             }
 
@@ -1162,16 +1150,9 @@ namespace Microsoft.Collections.Extensions
                 }
             }
 
-            result.uniqueCount = uniqueFoundCount;
-            result.unfoundCount = unfoundCount;
+            result.UniqueCount = uniqueFoundCount;
+            result.UnfoundCount = unfoundCount;
             return result;
-        }
-
-        // used for set checking operations (using enumerables) that rely on counting
-        internal struct ElementCount
-        {
-            internal int uniqueCount;
-            internal int unfoundCount;
         }
 
         public struct Enumerator : IEnumerator<T>
