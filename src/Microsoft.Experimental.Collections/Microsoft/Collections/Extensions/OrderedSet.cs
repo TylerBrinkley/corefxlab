@@ -39,9 +39,9 @@ namespace Microsoft.Collections.Extensions
         // remains contiguous and maintains order
         private Slot[] _slots = InitialSlots;
         private int _count;
+        private int _version;
         // is null when comparer is EqualityComparer<TKey>.Default so that the GetHashCode method is used explicitly on the object
         private readonly IEqualityComparer<T> _comparer;
-        private int _version;
 
         public int Count => _count;
 
@@ -724,24 +724,23 @@ namespace Microsoft.Collections.Extensions
             IEqualityComparer<T> comparer = _comparer;
             hashCode = item != null ? (comparer?.GetHashCode(item) ?? item.GetHashCode()) & 0x7FFFFFFF : 0;
             int[] buckets = _buckets;
-            int index = -1;
-            if (buckets.Length > 0)
+            int index = buckets[hashCode % buckets.Length] - 1;
+            if (index >= 0)
             {
-                index = buckets[hashCode % buckets.Length] - 1;
                 if (comparer == null)
                 {
                     comparer = EqualityComparer<T>.Default;
                 }
                 Slot[] slots = _slots;
                 int collisionCount = 0;
-                while (index >= 0)
+                do
                 {
-                    Slot entry = slots[index];
-                    if (entry.HashCode == hashCode && comparer.Equals(entry.Value, item))
+                    Slot slot = slots[index];
+                    if (slot.HashCode == hashCode && comparer.Equals(slot.Value, item))
                     {
                         break;
                     }
-                    index = entry.Next;
+                    index = slot.Next;
                     if (collisionCount >= slots.Length)
                     {
                         // The chain of slots forms a loop; which means a concurrent update has happened.
@@ -749,7 +748,7 @@ namespace Microsoft.Collections.Extensions
                         throw new InvalidOperationException(Strings.InvalidOperation_ConcurrentOperationsNotSupported);
                     }
                     ++collisionCount;
-                }
+                } while (index >= 0);
             }
             return index;
         }
