@@ -28,11 +28,16 @@ namespace Microsoft.Collections.Extensions
             public T Value;
             public int Next; // the index of the next item in the same bucket, -1 if last
         }
-
+        
+        // We want to initialize without allocating arrays. We also want to avoid null checks.
+        // Array.Empty would give divide by zero in modulo operation. So we use static one element arrays.
+        // The first add will cause a resize replacing these with real arrays of three elements.
+        // Arrays are wrapped in a class to avoid being duplicated for each <T>
+        private static readonly Slot[] InitialSlots = new Slot[1];
         // 1-based index into _slots; 0 means empty
-        private int[] _buckets = Array.Empty<int>();
+        private int[] _buckets = HashHelpers.SizeOneIntArray;
         // remains contiguous and maintains order
-        private Slot[] _slots = Array.Empty<Slot>();
+        private Slot[] _slots = InitialSlots;
         private int _count;
         // is null when comparer is EqualityComparer<TKey>.Default so that the GetHashCode method is used explicitly on the object
         private readonly IEqualityComparer<T> _comparer;
@@ -106,7 +111,9 @@ namespace Microsoft.Collections.Extensions
             }
             if (capacity > 0)
             {
-                Resize(HashHelpers.GetPrime(capacity));
+                int newSize = HashHelpers.GetPrime(capacity);
+                _buckets = new int[newSize];
+                _slots = new Slot[newSize];
             }
             if (comparer != EqualityComparer<T>.Default)
             {
@@ -690,7 +697,7 @@ namespace Microsoft.Collections.Extensions
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         #endregion
 
-        private void Resize(int newSize)
+        private Slot[] Resize(int newSize)
         {
             int[] newBuckets = new int[newSize];
             Slot[] newSlots = new Slot[newSize];
@@ -700,6 +707,7 @@ namespace Microsoft.Collections.Extensions
 
             _buckets = newBuckets;
             _slots = newSlots;
+            return newSlots;
         }
 
         private void ReinitializeBuckets(int[] buckets, Slot[] slots)
@@ -764,10 +772,9 @@ namespace Microsoft.Collections.Extensions
             // Check if resize is needed
             Slot[] slots = _slots;
             int count = _count;
-            if (slots.Length == count)
+            if (slots.Length == count || count == 1)
             {
-                Resize(HashHelpers.ExpandPrime(slots.Length));
-                slots = _slots;
+                slots = Resize(HashHelpers.ExpandPrime(slots.Length));
             }
 
             // Increment indices >= index;

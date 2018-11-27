@@ -88,6 +88,15 @@ namespace System {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to An item with the same key has already been added..
+        /// </summary>
+        internal static string Argument_AddingDuplicate {
+            get {
+                return ResourceManager.GetString("Argument_AddingDuplicate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to An item with the same key has already been added. Key: {0}.
         /// </summary>
         internal static string Argument_AddingDuplicateWithKey {
