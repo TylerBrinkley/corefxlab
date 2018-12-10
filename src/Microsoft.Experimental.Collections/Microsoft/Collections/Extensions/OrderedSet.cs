@@ -43,10 +43,25 @@ namespace Microsoft.Collections.Extensions
         // is null when comparer is EqualityComparer<TKey>.Default so that the GetHashCode method is used explicitly on the object
         private readonly IEqualityComparer<T> _comparer;
 
+        /// <summary>
+        /// Gets the number of elements that are contained in a set.
+        /// </summary>
+        /// <returns>The number of elements that are contained in the set.</returns>
         public int Count => _count;
 
+        /// <summary>
+        /// Gets the <see cref="IEqualityComparer{T}" /> object that is used to determine equality for the values in the set.
+        /// </summary>
+        /// <returns>The <see cref="IEqualityComparer{T}" /> object that is used to determine equality for the values in the set.</returns>
         public IEqualityComparer<T> Comparer => _comparer ?? EqualityComparer<T>.Default;
 
+        /// <summary>
+        /// Gets or sets the element at the specified index as an O(1) operation.
+        /// </summary>
+        /// <param name="index">The zero-based index of the element to get or set.</param>
+        /// <returns>The element at the specified index.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> is less than 0.-or-<paramref name="index" /> is equal to or greater than <see cref="OrderedSet{T}.Count" />.</exception>
+        /// <exception cref="ArgumentException">The property is set and the element already exists not at the specified index in the <see cref="OrderedSet{T}" />.</exception>
         public T this[int index]
         {
             get
@@ -88,21 +103,38 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that is empty and uses the default equality comparer for the set type.
+        /// </summary>
         public OrderedSet()
             : this(0, null)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that is empty, has the specified initial capacity, and uses the default equality comparer for the set type.
+        /// </summary>
+        /// <param name="capacity">The initial number of elements that the <see cref="OrderedSet{T}" /> can contain.</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity" /> is less than 0.</exception>
         public OrderedSet(int capacity)
             : this(capacity, null)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that is empty and uses the specified equality comparer for the set type.
+        /// </summary>
+        /// <param name="comparer">The <see cref="IEqualityComparer{T}" /> implementation to use when comparing values in the set, or null to use the default <see cref="EqualityComparer{T}" /> implementation for the set type.</param>
         public OrderedSet(IEqualityComparer<T> comparer)
             : this(0, comparer)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that is empty, has the specified initial capacity, and uses the specified <see cref="IEqualityComparer{T}" />.
+        /// </summary>
+        /// <param name="capacity">The initial number of elements that the <see cref="OrderedSet{T}" /> can contain.</param>
+        /// <param name="comparer">The <see cref="IEqualityComparer{T}" /> implementation to use when comparing values in the set, or null to use the default <see cref="EqualityComparer{T}" /> implementation for the set type.</param>
         public OrderedSet(int capacity, IEqualityComparer<T> comparer)
         {
             if (capacity < 0)
@@ -121,11 +153,22 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that uses the default equality comparer for the set type, contains elements copied from the specified collection, and has sufficient capacity to accommodate the number of elements copied.
+        /// </summary>
+        /// <param name="collection">The collection whose elements are copied to the new set.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="collection" /> is null.</exception>
         public OrderedSet(IEnumerable<T> collection)
             : this(collection, null)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrderedSet{T}" /> class that uses the specified equality comparer for the set type, contains elements copied from the specified collection, and has sufficient capacity to accommodate the number of elements copied.
+        /// </summary>
+        /// <param name="collection">The collection whose elements are copied to the new set.</param>
+        /// <param name="comparer">The <see cref="IEqualityComparer{T}" /> implementation to use when comparing values in the set, or null to use the default <see cref="EqualityComparer{T}" /> implementation for the set type.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="collection" /> is null.</exception>
         public OrderedSet(IEnumerable<T> collection, IEqualityComparer<T> comparer)
             : this((collection as ICollection<T>)?.Count ?? 0, comparer)
         {
@@ -140,8 +183,16 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
+        /// <summary>
+        /// Adds the specified element to a set.
+        /// </summary>
+        /// <param name="item">The element to add to the set.</param>
+        /// <returns>true if the element is added to the <see cref="OrderedSet{T}" /> object; false if the element is already present.</returns>
         public bool Add(T item) => TryInsert(null, item, false) >= 0;
 
+        /// <summary>
+        /// Removes all elements from an <see cref="OrderedSet{T}" /> object.
+        /// </summary>
         public void Clear()
         {
             if (_count > 0)
@@ -153,8 +204,19 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object contains the specified element.
+        /// </summary>
+        /// <param name="item">The element to locate in the <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object contains the specified element; otherwise, false.</returns>
         public bool Contains(T item) => IndexOf(item) >= 0;
 
+        /// <summary>
+        /// Resizes the internal data structure if necessary to ensure no additional resizing to support the specified capacity.
+        /// </summary>
+        /// <param name="capacity">The number of elements that the <see cref="OrderedSet{T}" /> must be able to contain.</param>
+        /// <returns>The capacity of the <see cref="OrderedSet{T}" />.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity" /> is less than 0.</exception>
         public int EnsureCapacity(int capacity)
         {
             if (capacity < 0)
@@ -172,6 +234,11 @@ namespace Microsoft.Collections.Extensions
             return newSize;
         }
 
+        /// <summary>
+        /// Removes all elements in the specified collection from the current <see cref="OrderedSet{T}" /> object.
+        /// </summary>
+        /// <param name="other">The collection of items to remove from the <see cref="OrderedSet{T}" /> object.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public void ExceptWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -195,12 +262,33 @@ namespace Microsoft.Collections.Extensions
             ExceptWithEnumerable(other);
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through an <see cref="OrderedSet{T}" /> object.
+        /// </summary>
+        /// <returns>An <see cref="OrderedSet{T}.Enumerator" /> object for the <see cref="OrderedSet{T}" /> object.</returns>
         public Enumerator GetEnumerator() => new Enumerator(this);
 
+        /// <summary>
+        /// Returns the zero-based index of the element within the <see cref="OrderedSet{T}" /> as an O(1) operation.
+        /// </summary>
+        /// <param name="item">The element to locate.</param>
+        /// <returns>The zero-based index of the element within the <see cref="OrderedSet{T}" />, if found; otherwise, -1.</returns>
         public int IndexOf(T item) => IndexOf(item, out _);
 
+        /// <summary>
+        /// Inserts the specified element into the <see cref="OrderedSet{T}" /> at the specified index as an O(n) operation.
+        /// </summary>
+        /// <param name="index">The zero-based index of the element to insert.</param>
+        /// <param name="item">The element to insert.</param>
+        /// <exception cref="ArgumentException">The element already exists in the <see cref="OrderedSet{T}" />.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> is less than 0.-or-<paramref name="index" /> is greater than <see cref="OrderedSet{T}.Count" />.</exception>
         public void Insert(int index, T item) => TryInsert(index, item, true);
 
+        /// <summary>
+        /// Modifies the current <see cref="OrderedSet{T}" /> object to contain only elements that are present in that object and in the specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public void IntersectWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -231,6 +319,12 @@ namespace Microsoft.Collections.Extensions
             IntersectWithEnumerable(other);
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object is a proper subset of the specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object is a proper subset of <paramref name="other" />; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool IsProperSubsetOf(IEnumerable<T> other)
         {
             if (other == null)
@@ -275,6 +369,12 @@ namespace Microsoft.Collections.Extensions
             return result.UniqueCount < _count && result.UnfoundCount == 0;
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object is a proper superset of the specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object is a proper superset of <paramref name="other" />; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool IsProperSupersetOf(IEnumerable<T> other)
         {
             if (other == null)
@@ -319,6 +419,12 @@ namespace Microsoft.Collections.Extensions
             return result.UniqueCount == _count && result.UnfoundCount > 0;
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object is a subset of the specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object is a subset of <paramref name="other" />; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool IsSubsetOf(IEnumerable<T> other)
         {
             if (other == null)
@@ -358,6 +464,12 @@ namespace Microsoft.Collections.Extensions
             return result.UniqueCount == _count && result.UnfoundCount >= 0;
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object is a superset of the specified collection.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object is a superset of <paramref name="other" />; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool IsSupersetOf(IEnumerable<T> other)
         {
             if (other == null)
@@ -394,6 +506,20 @@ namespace Microsoft.Collections.Extensions
             return ContainsAllElements(other);
         }
 
+        /// <summary>
+        /// Moves the element at the specified fromIndex to the specified toIndex while re-arranging the elements in between.
+        /// </summary>
+        /// <param name="fromIndex">The zero-based index of the element to move.</param>
+        /// <param name="toIndex">The zero-based index to move the element to.</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="fromIndex"/> is less than 0.
+        /// -or-
+        /// <paramref name="fromIndex"/> is equal to or greater than <see cref="OrderedSet{T}.Count" />
+        /// -or-
+        /// <paramref name="toIndex"/> is less than 0.
+        /// -or-
+        /// <paramref name="toIndex"/> is equal to or greater than <see cref="OrderedSet{T}.Count" />
+        /// </exception>
         public void Move(int fromIndex, int toIndex)
         {
             if ((uint)fromIndex >= (uint)_count)
@@ -424,6 +550,24 @@ namespace Microsoft.Collections.Extensions
             ++_version;
         }
 
+        /// <summary>
+        /// Moves the specified number of elements at the specified fromIndex to the specified toIndex while re-arranging the elements in between.
+        /// </summary>
+        /// <param name="fromIndex">The zero-based index of the elements to move.</param>
+        /// <param name="toIndex">The zero-based index to move the elements to.</param>
+        /// <param name="count">The number of elements to move.</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="fromIndex"/> is less than 0.
+        /// -or-
+        /// <paramref name="fromIndex"/> is equal to or greater than <see cref="OrderedSet{T}.Count" />.
+        /// -or-
+        /// <paramref name="toIndex"/> is less than 0.
+        /// -or-
+        /// <paramref name="toIndex"/> is equal to or greater than <see cref="OrderedSet{T}.Count" />.
+        /// -or-
+        /// <paramref name="count"/> is less than 0.</exception>
+        /// <exception cref="ArgumentException"><paramref name="fromIndex"/> + <paramref name="count"/> is greater than <see cref="OrderedSet{T}.Count" />.
+        /// -or-
+        /// <paramref name="toIndex"/> + <paramref name="count"/> is greater than <see cref="OrderedSet{T}.Count" />.</exception>
         public void MoveRange(int fromIndex, int toIndex, int count)
         {
             if (count == 1)
@@ -496,6 +640,12 @@ namespace Microsoft.Collections.Extensions
             ++_version;
         }
 
+        /// <summary>
+        /// Determines whether the current <see cref="OrderedSet{T}" /> object and a specified collection share common elements.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object and <paramref name="other" /> share at least one common element; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool Overlaps(IEnumerable<T> other)
         {
             if (other == null)
@@ -524,6 +674,11 @@ namespace Microsoft.Collections.Extensions
             return false;
         }
 
+        /// <summary>
+        /// Removes the specified element from a <see cref="OrderedSet{T}" /> object.
+        /// </summary>
+        /// <param name="item">The element to remove.</param>
+        /// <returns>true if the element is successfully found and removed; otherwise, false.  This method returns false if <paramref name="item" /> is not found in the <see cref="OrderedSet{T}" /> object.</returns>
         public bool Remove(T item)
         {
             int index = IndexOf(item);
@@ -535,6 +690,11 @@ namespace Microsoft.Collections.Extensions
             return false;
         }
 
+        /// <summary>
+        /// Removes the value at the specified index from the <see cref="OrderedSet{T}" /> as an O(n) operation.
+        /// </summary>
+        /// <param name="index">The zero-based index of the element to remove.</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> is less than 0.-or-<paramref name="index" /> is equal to or greater than <see cref="OrderedSet{T}.Count" />.</exception>
         public void RemoveAt(int index)
         {
             int count = _count;
@@ -558,6 +718,12 @@ namespace Microsoft.Collections.Extensions
             ++_version;
         }
 
+        /// <summary>
+        /// Determines whether an <see cref="OrderedSet{T}" /> object and the specified collection contain the same elements.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> object is equal to <paramref name="other" />; otherwise, false.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public bool SetEquals(IEnumerable<T> other)
         {
             if (other == null)
@@ -598,6 +764,11 @@ namespace Microsoft.Collections.Extensions
             return result.UniqueCount == _count && result.UnfoundCount == 0;
         }
 
+        /// <summary>
+        /// Modifies the current <see cref="OrderedSet{T}" /> object to contain only elements that are present either in that object or in the specified collection, but not both.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public void SymmetricExceptWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -622,8 +793,16 @@ namespace Microsoft.Collections.Extensions
             SymmetricExceptWithEnumerable(other);
         }
 
+        /// <summary>
+        /// Sets the capacity of a <see cref="OrderedSet{T}" /> object to the actual number of elements it contains, rounded up to a nearby, implementation-specific value.
+        /// </summary>
         public void TrimExcess() => TrimExcess(_count);
 
+        /// <summary>
+        /// Sets the capacity of an <see cref="OrderedSet{T}" /> object to the specified capacity, rounded up to a nearby, implementation-specific value.
+        /// </summary>
+        /// <param name="capacity">The number of elements that the <see cref="OrderedSet{T}" /> must be able to contain.</param>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="capacity"/> is less than <see cref="OrderedSet{T}.Count" />.</exception>
         public void TrimExcess(int capacity)
         {
             if (capacity < _count)
@@ -639,6 +818,12 @@ namespace Microsoft.Collections.Extensions
             }
         }
 
+        /// <summary>
+        /// Gets the actual value that is equivalent to the specified value as an O(1) operation.
+        /// </summary>
+        /// <param name="equalValue">The equivalent value to compare with.</param>
+        /// <param name="actualValue">When this method returns, contains the actual value associated that is equivalent to the specified value, if the specified value is found; otherwise, the default value for the type of the <paramref name="actualValue" /> parameter. This parameter is passed uninitialized.</param>
+        /// <returns>true if the <see cref="OrderedSet{T}" /> contains an equivalent element; otherwise, false.</returns>
         public bool TryGetValue(T equalValue, out T actualValue)
         {
             int index = IndexOf(equalValue);
@@ -651,6 +836,11 @@ namespace Microsoft.Collections.Extensions
             return false;
         }
 
+        /// <summary>
+        /// Modifies the current <see cref="OrderedSet{T}" /> object to contain all elements that are present in itself, the specified collection, or both.
+        /// </summary>
+        /// <param name="other">The collection to compare to the current <see cref="OrderedSet{T}" /> object.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="other" /> is null.</exception>
         public void UnionWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -1161,6 +1351,9 @@ namespace Microsoft.Collections.Extensions
             return result;
         }
 
+        /// <summary>
+        /// Enumerates the elements of an <see cref="OrderedSet{T}" /> object.
+        /// </summary>
         public struct Enumerator : IEnumerator<T>
         {
             private readonly OrderedSet<T> _orderedSet;
@@ -1168,6 +1361,10 @@ namespace Microsoft.Collections.Extensions
             private int _index;
             private T _current;
 
+            /// <summary>
+            /// Gets the element at the current position of the enumerator.
+            /// </summary>
+            /// <returns>The element in the <see cref="OrderedSet{T}" /> collection at the current position of the enumerator.</returns>
             public T Current => _current;
 
             object IEnumerator.Current => _current;
@@ -1180,10 +1377,18 @@ namespace Microsoft.Collections.Extensions
                 _current = default;
             }
 
+            /// <summary>
+            /// Releases all resources used by a <see cref="OrderedSet{T}.Enumerator" /> object.
+            /// </summary>
             public void Dispose()
             {
             }
 
+            /// <summary>
+            /// Advances the enumerator to the next element of the <see cref="OrderedSet{T}" /> collection.
+            /// </summary>
+            /// <returns>true if the enumerator was successfully advanced to the next element; false if the enumerator has passed the end of the collection.</returns>
+            /// <exception cref="InvalidOperationException">The collection was modified after the enumerator was created.</exception>
             public bool MoveNext()
             {
                 if (_version != _orderedSet._version)
