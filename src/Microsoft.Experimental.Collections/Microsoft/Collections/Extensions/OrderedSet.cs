@@ -184,7 +184,7 @@ namespace Microsoft.Collections.Extensions
         }
 
         /// <summary>
-        /// Adds the specified element to a set.
+        /// Adds the specified element to a set as an O(1) operation.
         /// </summary>
         /// <param name="item">The element to add to the set.</param>
         /// <returns>true if the element is added to the <see cref="OrderedSet{T}" /> object; false if the element is already present.</returns>
@@ -205,7 +205,7 @@ namespace Microsoft.Collections.Extensions
         }
 
         /// <summary>
-        /// Determines whether an <see cref="OrderedSet{T}" /> object contains the specified element.
+        /// Determines whether an <see cref="OrderedSet{T}" /> object contains the specified element as an O(1) operation.
         /// </summary>
         /// <param name="item">The element to locate in the <see cref="OrderedSet{T}" /> object.</param>
         /// <returns>true if the <see cref="OrderedSet{T}" /> object contains the specified element; otherwise, false.</returns>
@@ -675,7 +675,7 @@ namespace Microsoft.Collections.Extensions
         }
 
         /// <summary>
-        /// Removes the specified element from a <see cref="OrderedSet{T}" /> object.
+        /// Removes the specified element from a <see cref="OrderedSet{T}" /> object as an O(n) operation.
         /// </summary>
         /// <param name="item">The element to remove.</param>
         /// <returns>true if the element is successfully found and removed; otherwise, false.  This method returns false if <paramref name="item" /> is not found in the <see cref="OrderedSet{T}" /> object.</returns>
