@@ -707,12 +707,13 @@ namespace Microsoft.Collections.Extensions
             RemoveSlotFromBucket(index);
 
             // Decrement the indices > index
+            Slot[] slots = _slots;
             for (int i = index + 1; i < count; ++i)
             {
+                slots[i - 1] = slots[i];
                 UpdateBucketIndex(i, -1);
             }
-            Slot[] slots = _slots;
-            Array.Copy(slots, index + 1, slots, index, count - index - 1);
+
             --_count;
             slots[_count] = default;
             ++_version;
@@ -968,15 +969,16 @@ namespace Microsoft.Collections.Extensions
 
             // Increment indices >= index;
             int actualIndex = index ?? count;
-            for (i = actualIndex; i < count; ++i)
+            for (i = count - 1; i >= actualIndex; --i)
             {
+                slots[i + 1] = slots[i];
                 UpdateBucketIndex(i, 1);
             }
-            Array.Copy(slots, actualIndex, slots, actualIndex + 1, count - actualIndex);
 
-            Slot slot = new Slot { HashCode = hashCode, Value = item };
+            ref Slot slot = ref slots[actualIndex];
+            slot.HashCode = hashCode;
+            slot.Value = item;
             AddSlotToBucket(ref slot, actualIndex, _buckets);
-            slots[actualIndex] = slot;
             ++_count;
             ++_version;
             return actualIndex;
